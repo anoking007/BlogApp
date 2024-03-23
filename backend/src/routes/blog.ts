@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { PrismaClient } from '@prisma/client/edge'
 import { withAccelerate } from '@prisma/extension-accelerate'
-import { decode, sign, verify } from 'hono/jwt'
+import { verify } from 'hono/jwt'
+import { createPostInput,updatePostInput } from "@arghyaghosh/common-app";
 
 const blog = new Hono<{
 	Bindings: {
@@ -37,7 +38,14 @@ blog.post('/',async(c)=>{
   const prisma = new PrismaClient({
     datasourceUrl: c.env.DATABASE_URL,
 }).$extends(withAccelerate())
-  const body=await c.req.json()
+const body=await c.req.json()
+const result=createPostInput.safeParse(body)
+if(!result.success){
+  c.status(400)
+  return c.json({
+    error:"invalid input"
+  })
+}
   const blog=await prisma.post.create({
     data:{
       title:body.title,
@@ -56,6 +64,13 @@ blog.put('/',async(c)=>{
     datasourceUrl: c.env.DATABASE_URL,
 }).$extends(withAccelerate())
 const body=await c.req.json()
+const result=updatePostInput.safeParse(body)
+if(!result.success){
+  c.status(400)
+  return c.json({
+    error:"invalid input"
+  })
+}
 const blog=await prisma.post.update({
   where:{
     id:body.id,
@@ -78,13 +93,13 @@ return c.json({
   const blog=await prisma.post.findMany()
       return c.json({blog})
       
-    })
+    }) 
 
 blog.get('/:id',async(c)=>{
   const prisma = new PrismaClient({
     datasourceUrl: c.env.DATABASE_URL,
 }).$extends(withAccelerate())
-const id=await c.req.param('id')
+const id=c.req.param('id')
 const blog=await prisma.post.findFirst({
   where:{
     id:id,
